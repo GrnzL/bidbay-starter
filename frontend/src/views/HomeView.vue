@@ -42,6 +42,16 @@ const sortedProducts = computed(() =>
 
 fetchProducts();
 
+const getHighestBid = (product) => {
+  if (!product.bids || product.bids.length === 0) {
+    return product.originalPrice;
+  }
+  const highestBid = product.bids.reduce((max, bid) => {
+    return bid.price > max.price ? bid : max;
+  });
+  return highestBid.price;
+};
+
 </script>
 
 <template>
@@ -124,9 +134,14 @@ fetchProducts();
               </RouterLink>
             </p>
             <p class="card-text" data-test-product-date>
-              En cours jusqu'au  {{product.endDate}}
+              En cours jusqu'au {{ new Date(product.endDate).toLocaleDateString('fr-FR') }}
             </p>
-            <p class="card-text" data-test-product-price>Prix actuel : {{product.originalPrice}} €</p>
+            <p class="card-text" data-test-product-price>
+              Prix de départ : {{ product.originalPrice }} €
+            </p>
+            <p class="card-text" data-test-product-price>
+              Prix actuel : {{ getHighestBid(product) }} €
+            </p>
           </div>
         </div>
       </div>
