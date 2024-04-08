@@ -3,12 +3,17 @@ import { ref, computed } from "vue";
 
 const loading = ref(false);
 const error = ref(false);
+const filter = ref("");
+const sorter = ref("name");
+const products = ref([]);
 
 async function fetchProducts() {
   loading.value = true;
   error.value = false;
 
-  try {
+  try{
+    const response = await fetch("http://localhost:3000/api/products");
+    products.value = await response.json();
   } catch (e) {
     error.value = true;
   } finally {
@@ -16,7 +21,27 @@ async function fetchProducts() {
   }
 }
 
+const filteredProducts = computed(() =>
+    products.value.filter((product) =>
+        product.name.toLowerCase().includes(filter.value.toLowerCase())
+    )
+);
+
+const sortedProducts = computed(() =>
+    // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+    filteredProducts.value.sort((a, b) => {
+      if (sorter.value === "name") {
+        return a.name.localeCompare(b.name);
+      } else if (sorter.value === "price") {
+        return a.originalPrice - b.originalPrice;
+      } else {
+        return 0;
+      }
+    })
+);
+
 fetchProducts();
+
 </script>
 
 <template>
@@ -62,50 +87,46 @@ fetchProducts();
       </div>
     </div>
 
-    <div class="text-center mt-4" data-test-loading>
+    <div class="text-center mt-4" data-test-loading v-if="loading">
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Chargement...</span>
       </div>
     </div>
 
-    <div class="alert alert-danger mt-4" role="alert" data-test-error>
+    <div class="alert alert-danger mt-4" role="alert" data-test-error v-if="error">
       Une erreur est survenue lors du chargement des produits.
     </div>
     <div class="row">
-      <div class="col-md-4 mb-4" v-for="i in 10" data-test-product :key="i">
+      <div class="col-md-4 mb-4" v-for="product in sortedProducts" :key="product.id" data-test-product>
         <div class="card">
-          <RouterLink :to="{ name: 'Product', params: { productId: 'TODO' } }">
-            <img
-              src="https://picsum.photos/id/403/512/512"
-              data-test-product-picture
-              class="card-img-top"
-            />
+          <RouterLink :to="{ name: 'Product', params: { productId: product.id } }">
+            <img :src="product.pictureUrl" class="card-img-top" :alt="product.name" />
           </RouterLink>
           <div class="card-body">
             <h5 class="card-title">
               <RouterLink
                 data-test-product-name
-                :to="{ name: 'Product', params: { productId: 'TODO' } }"
+                :to="{ name: 'Product', params: { productId: product.id } }"
               >
-                Machine à écrire
+                {{ product.name }}
               </RouterLink>
             </h5>
             <p class="card-text" data-test-product-description>
-              Machine à écrire vintage en parfait état de fonctionnement
+              {{ product.description }}
             </p>
             <p class="card-text">
               Vendeur :
               <RouterLink
                 data-test-product-seller
-                :to="{ name: 'User', params: { userId: 'TODO' } }"
+                :to="{ name: 'User', params: { userId: product.seller.id } }"
               >
                 alice
               </RouterLink>
             </p>
             <p class="card-text" data-test-product-date>
-              En cours jusqu'au 05/04/2026
+              En cours jusqu'au  {{product.endDate}}
             </p>
-            <p class="card-text" data-test-product-price>Prix actuel : 42 €</p>
+            <p class="card-text" data-test-product-price>Prix actuel : {{product.originalPrice}} €</p>
           </div>
         </div>
       </div>

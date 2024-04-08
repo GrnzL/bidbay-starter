@@ -1,16 +1,61 @@
 <script setup>
 import { useAuthStore } from "../store/auth";
+
 import { useRouter } from "vue-router";
+
 import { ref } from "vue";
 
 const { isAuthenticated, token } = useAuthStore();
 const router = useRouter();
 
+
 if (!isAuthenticated.value) {
   router.push({ name: "Login" });
 }
 
-// router.push({ name: "Product", params: { productId: 'TODO } });
+const productName = ref('')
+const productDescription = ref('')
+const productPictureUrl = ref('')
+const productCategorie = ref('')
+const productStartPrice = ref('')
+const productEndBidDate = ref('')
+
+const loading = ref(false);
+const error = ref(false);
+
+async function addProduct(){
+  loading.value = true
+  try{
+    let response = await fetch('http://localhost:3000/api/products', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token.value}`,
+        'Content-Type': 'application/json',
+        accept: 'application/json'
+      },
+      body: JSON.stringify({
+        name: productName.value,
+        description: productDescription.value,
+        pictureUrl: productPictureUrl.value,
+        category: productCategorie.value,
+        originalPrice: productStartPrice.value,
+        endDate: productEndBidDate.value
+      })
+    })
+    if(response.ok) {
+      let product = await response.json()
+      router.push({ name: "Product", params: { productId: product.id } })
+    } else{
+      error.value = true
+    }
+
+  } catch(e){
+    error.value = true
+  } finally{
+    loading.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -18,8 +63,8 @@ if (!isAuthenticated.value) {
 
   <div class="row justify-content-center">
     <div class="col-md-6">
-      <form>
-        <div class="alert alert-danger mt-4" role="alert" data-test-error>
+      <form @submit.prevent="addProduct()">
+        <div v-if="error" class="alert alert-danger mt-4" role="alert" data-test-error>
           Une erreur s'est produite
         </div>
 
@@ -31,6 +76,7 @@ if (!isAuthenticated.value) {
             id="product-name"
             required
             data-test-product-name
+            v-model="productName"
           />
         </div>
 
@@ -45,6 +91,7 @@ if (!isAuthenticated.value) {
             rows="3"
             required
             data-test-product-description
+            v-model="productDescription"
           ></textarea>
         </div>
 
@@ -56,6 +103,7 @@ if (!isAuthenticated.value) {
             id="product-category"
             required
             data-test-product-category
+            v-model="productCategorie"
           />
         </div>
 
@@ -73,6 +121,7 @@ if (!isAuthenticated.value) {
               min="0"
               required
               data-test-product-price
+              v-model="productStartPrice"
             />
             <span class="input-group-text">€</span>
           </div>
@@ -89,6 +138,7 @@ if (!isAuthenticated.value) {
             name="pictureUrl"
             required
             data-test-product-picture
+            v-model="productPictureUrl"
           />
         </div>
 
@@ -103,6 +153,7 @@ if (!isAuthenticated.value) {
             name="endDate"
             required
             data-test-product-end-date
+            v-model="productEndBidDate"
           />
         </div>
 
@@ -110,7 +161,6 @@ if (!isAuthenticated.value) {
           <button
             type="submit"
             class="btn btn-primary"
-            disabled
             data-test-submit
           >
             Ajouter le produit
@@ -119,6 +169,7 @@ if (!isAuthenticated.value) {
               class="spinner-border spinner-border-sm"
               role="status"
               aria-hidden="true"
+              v-if="loading"
             ></span>
           </button>
         </div>
