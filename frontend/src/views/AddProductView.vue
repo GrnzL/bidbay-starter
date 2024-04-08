@@ -13,6 +13,8 @@ if (!isAuthenticated.value) {
   router.push({ name: "Login" });
 }
 
+
+
 const productName = ref('')
 const productDescription = ref('')
 const productPictureUrl = ref('')
@@ -45,6 +47,7 @@ async function addProduct(){
     if(response.ok) {
       let product = await response.json()
       router.push({ name: "Product", params: { productId: product.id } })
+
     } else{
       error.value = true
     }
@@ -162,6 +165,7 @@ async function addProduct(){
             type="submit"
             class="btn btn-primary"
             data-test-submit
+            :disabled="loading"
           >
             Ajouter le produit
             <span
