@@ -1,39 +1,25 @@
 import authMiddleware from '../middlewares/auth.js'
 import { Bid } from '../orm/index.js'
 import express from 'express'
-import User from './user.js';
+import User from './user.js'
+import Product from './product.js'
 
 const router = express.Router()
 
 router.delete('/api/bids/:bidId', authMiddleware, async (req, res) => {
   try {
-    const { bidId } = req.params
-
-    const data = await Bid.findOne(
-      {
-        where: { id: bidId },
-        include: [{
-          model: User,
-          as: 'bidder',
-          attributes: ['id', 'username', 'admin']
-        }]
-      }
-    )
-
-    if (!data) {
-      res.status(404).send()
-    } else if (data.bidderId !== req.user.id && !req.user.admin) {
-      res.status(403).send()
-    } else {
-      res.status(204).json(await Bid.destroy(
-        { where: { id: bidId } }
-      ))
+    const deleteBid = await Bid.findByPk(req.params.bidId)
+    if (!deleteBid) {
+      return res.status(404).send('Error : This product does not exist')
     }
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid or missing fields', details: err })
+    if (deleteBid.bidderId !== req.user.id && !req.user.admin) {
+      return res.status(403).send('Error : Forbidden')
+    }
+    await deleteBid.destroy()
+    res.status(204).send('Error : No Content')
+  } catch (error) {
+    return res.status(403).send('Error : Forbidden ' + error)
   }
-
-  res.status(600).send()
 })
 
 router.post('/api/products/:productId/bids', authMiddleware, async (req, res) => {

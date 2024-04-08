@@ -1,22 +1,19 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import { RouterLink } from "vue-router";
+import { ref, computed } from "vue";
 
 const loading = ref(false);
 const error = ref(false);
+const filter = ref("");
+const sorter = ref("name");
 const products = ref([]);
-const filterText = ref('');
-const sort = ref('nom');
 
 async function fetchProducts() {
   loading.value = true;
   error.value = false;
 
-  try {
-    const response = await fetch('http://localhost:3000/api/products');
-    const data = await response.json();
-    products.value = data;
-    sortProducts('name');
+  try{
+    const response = await fetch("http://localhost:3000/api/products");
+    products.value = await response.json();
   } catch (e) {
     error.value = true;
   } finally {
@@ -24,41 +21,26 @@ async function fetchProducts() {
   }
 }
 
-onMounted(fetchProducts);
+const filteredProducts = computed(() =>
+    products.value.filter((product) =>
+        product.name.toLowerCase().includes(filter.value.toLowerCase())
+    )
+);
 
-function sortProducts(type) {
-  if (type === 'price') {
-    products.value = products.value?.sort((a, b) => a.originalPrice - b.originalPrice);
-    sort.value = 'prix';
-  } else {
-    products.value = products.value?.sort((a, b) => a.name.localeCompare(b.name));
-    sort.value = 'nom';
-  }
-}
+const sortedProducts = computed(() =>
+    filteredProducts.value.sort((a, b) => {
+      if (sorter.value === "name") {
+        return a.name.localeCompare(b.name);
+      } else if (sorter.value === "price") {
+        return a.originalPrice - b.originalPrice;
+      } else {
+        return 0;
+      }
+    })
+);
 
-function filterProducts() {
-  return products.value.filter(product =>
-      product.name.toLowerCase().includes(filterText.value.toLowerCase())
-  );
-}
-
-/**
- * @param {ProductObject} product
- * @returns {number}
- */
-const getHighestBid = (product) => {
-  if (!product.bids || product.bids.length === 0) {
-    return product.originalPrice;
-  }
-
-  const highestBid = product.bids.reduce((max, bid) => {
-    return bid.price > max.price ? bid : max;
-  });
-
-  return highestBid.price;
-};
+fetchProducts();
 </script>
-
 
 <template>
   <div>
@@ -69,29 +51,24 @@ const getHighestBid = (product) => {
         <form>
           <div class="input-group">
             <span class="input-group-text">Filtrage</span>
-            <input
-                v-model="filterText"
-                type="text"
-                class="form-control"
-                placeholder="Filtrer par nom"
-                data-test-filter
-            />
+            <input v-model="filter" type="text" class="form-control" placeholder="Filtrer par nom" data-test-filter />
           </div>
         </form>
       </div>
       <div class="col-md-6 text-end">
         <div class="btn-group">
-          <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-test-sorter>
-            Trier par {{ sort }}
-            <span class="caret"></span>
+          <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                  data-test-sorter>
+            Trier par {{ sorter === "name" ? "nom" : "prix" }}
           </button>
-
           <ul class="dropdown-menu dropdown-menu-end">
-            <li v-on:click="sortProducts('name')">
-              <a class="dropdown-item" href="#"> Nom </a>
+            <li>
+              <a class="dropdown-item" href="#" @click.prevent="sorter = 'name'">
+                Nom
+              </a>
             </li>
-            <li v-on:click="sortProducts('price')">
-              <a class="dropdown-item" href="#" data-test-sorter-price>
+            <li>
+              <a class="dropdown-item" href="#" data-test-sorter-price @click.prevent="sorter = 'price'">
                 Prix
               </a>
             </li>
@@ -100,52 +77,35 @@ const getHighestBid = (product) => {
       </div>
     </div>
 
-    <div v-if="loading" class="text-center mt-4" data-test-loading>
+    <div class="text-center mt-4" data-test-loading v-if="loading">
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Chargement...</span>
       </div>
     </div>
 
-    <div v-if="error" class="alert alert-danger mt-4" role="alert" data-test-error>
+    <div class="alert alert-danger mt-4" role="alert" data-test-error v-if="error">
       Une erreur est survenue lors du chargement des produits.
     </div>
 
-    <div v-if="!loading && !error" class="row">
-      <div v-for="product in filterProducts()" :key="product.id" class="col-md-4 mb-4" data-test-product>
+    <div class="row">
+      <div class="col-md-4 mb-4" v-for="product in sortedProducts" :key="product.id" data-test-product>
         <div class="card">
           <RouterLink :to="{ name: 'Product', params: { productId: product.id } }">
-            <img :src="product.pictureUrl" class="card-img-top" :alt="product.name" data-test-product-picture>
+            <img :src="product.pictureUrl" class="card-img-top" :alt="product.name" />
           </RouterLink>
           <div class="card-body">
-            <h5 class="card-title">
-              <RouterLink :to="{ name: 'Product', params: { productId: product.id } }" data-test-product-name>
-                {{ product.name }}
-              </RouterLink>
-            </h5>
-            <p class="card-text" data-test-product-description>{{ product.description }}</p>
+            <h5 class="card-title">{{ product.name }}</h5>
+            <p class="card-text">{{ product.description }}</p>
             <p class="card-text">
               Vendeur :
               <RouterLink
                   data-test-product-seller
-                  :to="{ name: 'User', params: { userId: product.sellerId } }"
+                  :to="{ name: 'User', params: { userId: product.seller.id } }"
               >
                 {{product.seller.username}}
               </RouterLink>
             </p>
-            <p class="card-text" data-test-product-date>
-              <span v-if="new Date(product.endDate) > new Date()">
-                En cours jusqu'au {{ new Date(product.endDate).toLocaleDateString('fr-FR') }}
-              </span>
-              <span v-else>
-                Terminé
-              </span>
-            </p>
-            <p class="card-text" data-test-product-price>
-              Prix de départ : {{ product.originalPrice }} €
-            </p>
-            <p class="card-text" data-test-product-price>
-              Prix actuel : {{ getHighestBid(product) }} €
-            </p>
+            <p class="card-text">{{ product.originalPrice }} €</p>
           </div>
         </div>
       </div>
