@@ -40,6 +40,17 @@ const sortedProducts = computed(() =>
 );
 
 fetchProducts();
+
+const getHighestBid = (product) => {
+  if (!product.bids || product.bids.length === 0) {
+    return product.originalPrice;
+  }
+  const highestBid = product.bids.reduce((max, bid) => {
+    return bid.price > max.price ? bid : max;
+  });
+  return highestBid.price;
+};
+
 </script>
 
 <template>
@@ -51,24 +62,41 @@ fetchProducts();
         <form>
           <div class="input-group">
             <span class="input-group-text">Filtrage</span>
-            <input v-model="filter" type="text" class="form-control" placeholder="Filtrer par nom" data-test-filter />
+            <input
+              v-model="filter"
+              type="text"
+              class="form-control"
+              placeholder="Filtrer par nom"
+              data-test-filter
+            />
           </div>
         </form>
       </div>
       <div class="col-md-6 text-end">
         <div class="btn-group">
-          <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
-                  data-test-sorter>
+          <button
+              type="button"
+              class="btn btn-primary dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              data-test-sorter
+          >
             Trier par {{ sorter === "name" ? "nom" : "prix" }}
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" href="#" @click.prevent="sorter = 'name'">
+            <li v-on:click="sorter='name'">
+              <a class="dropdown-item"
+                 href="#"
+                 @click.prevent="sorter = 'name'"
+              >
                 Nom
               </a>
             </li>
-            <li>
-              <a class="dropdown-item" href="#" data-test-sorter-price @click.prevent="sorter = 'price'">
+            <li v-on:click="sorter='price'">
+              <a
+                class="dropdown-item"
+                href="#"
+                data-test-sorter-price>
                 Prix
               </a>
             </li>
@@ -94,8 +122,17 @@ fetchProducts();
             <img :src="product.pictureUrl" class="card-img-top" :alt="product.name" />
           </RouterLink>
           <div class="card-body">
-            <h5 class="card-title">{{ product.name }}</h5>
-            <p class="card-text">{{ product.description }}</p>
+            <h5 class="card-title">
+              <RouterLink
+                  data-test-product-name
+                  :to="{ name: 'Product', params: { productId: product.id } }"
+              >
+                {{ product.name }}
+              </RouterLink>
+            </h5>
+            <p class="card-text" data-test-product-description>
+              {{ product.description }}
+            </p>
             <p class="card-text">
               Vendeur :
               <RouterLink
@@ -105,7 +142,16 @@ fetchProducts();
                 {{product.seller.username}}
               </RouterLink>
             </p>
-            <p class="card-text">{{ product.originalPrice }} €</p>
+            <p class="card-text" data-test-product-date>
+              En cours jusqu'au
+              {{ new Date(product.endDate).toLocaleDateString("fr-FR") }}
+            </p>
+            <p class="card-text" data-test-product-price>
+              Prix de départ : {{ product.originalPrice }} €
+            </p>
+            <p class="card-text" data-test-product-price>
+              Prix actuel : {{ getHighestBid(product) }} €
+            </p>
           </div>
         </div>
       </div>
